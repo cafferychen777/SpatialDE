@@ -51,6 +51,8 @@ Compatibility fixes in this fork include:
 - replacement of the removed `scipy.misc.derivative` API;
 - conversion of removed top-level SciPy array aliases to NumPy;
 - support for current pandas array semantics;
+- built-in `stabilize` and `regress_out` preprocessing, replacing the separate
+  NaiveDE runtime dependency used by the original command-line workflow;
 - modern PEP 517/621 packaging with complete runtime dependencies;
 - isolated wheel builds and real numerical smoke tests in CI.
 
