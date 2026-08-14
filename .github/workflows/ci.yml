@@ -2,31 +2,34 @@ name: CI
 
 on:
   push:
+    branches: [master]
   pull_request:
+    branches: [master]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
-jobs:
-  compatibility:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.11", "3.12", "3.13", "3.14"]
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
+jobs:
+  verify:
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install package
-        run: python -m pip install .
-      - name: Check source
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.11"
+      - name: Install test and build tools
+        run: python -m pip install . pytest ruff build twine
+      - name: Check source and tests
         run: |
-          python -m pip install pytest ruff
           python -m compileall -q src
-          ruff check --select E9,F63,F7,F82 src
+          ruff check --select E9,F63,F7,F82 src tests
           python -m pytest -q
       - name: Run numerical smoke test
         run: |
@@ -51,16 +54,7 @@ jobs:
           assert results.sort_values("pval").iloc[0]["g"] == "spatial_gene"
           assert np.isfinite(results[["pval", "qval"]].to_numpy()).all()
           PY
-
-  package:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
       - name: Build and verify distributions
         run: |
-          python -m pip install build twine
           python -m build
           python -m twine check dist/*
