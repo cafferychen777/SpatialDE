@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  compatibility:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install package
+        run: python -m pip install .
+      - name: Check source
+        run: |
+          python -m pip install ruff
+          python -m compileall -q src
+          ruff check --select E9,F63,F7,F82 src
+      - name: Run numerical smoke test
+        run: |
+          python - <<'PY'
+          import numpy as np
+          import pandas as pd
+          import SpatialDE
+
+          rng = np.random.default_rng(42)
+          side = 5
+          x, y = np.meshgrid(np.arange(side), np.arange(side))
+          coordinates = pd.DataFrame({"x": x.ravel(), "y": y.ravel()})
+          trend = coordinates["x"].to_numpy() + coordinates["y"].to_numpy()
+          expression = pd.DataFrame(
+              {
+                  "spatial_gene": trend + rng.normal(0, 0.15, trend.size),
+                  "noise_gene_1": rng.normal(0, 1, trend.size),
+                  "noise_gene_2": rng.normal(0, 1, trend.size),
+              }
+          )
+          results = SpatialDE.run(coordinates, expression)
+          assert results.sort_values("pval").iloc[0]["g"] == "spatial_gene"
+          assert np.isfinite(results[["pval", "qval"]].to_numpy()).all()
+          PY
+
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build and verify distributions
+        run: |
+          python -m pip install build twine
+          python -m build
+          python -m twine check dist/*
