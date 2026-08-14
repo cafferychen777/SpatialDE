@@ -9,7 +9,7 @@ description = "Maintained Python 3 fork of SpatialDE"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
-license-files = ["LICENSE"]
+license-files = ["LICENSE", "NOTICE.md"]
 authors = [
     {name = "Valentine Svensson"},
 ]
